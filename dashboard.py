@@ -1,57 +1,75 @@
 import streamlit as st
-import numpy as np
-from funcional.funciones import simular_consumo, calcular_promedio
+import pandas as pd
+from funcional.funciones import calcular_promedio
 from logica.reglas import verificar_alertas
 
-st.set_page_config(page_title="SmartEnergy Dashboard", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="SmartEnergy", page_icon="⚡", layout="wide")
 
-st.title("⚡ SmartEnergy - Monitoreo de Consumo Eléctrico Doméstico")
+st.title("⚡Monitoreo de Consumo Eléctrico Doméstico")
 
-# --- Interactividad ---
-st.sidebar.header("Configuración de Simulación")
-dispositivos = st.sidebar.multiselect(
-    "Selecciona los dispositivos a monitorear:",
-    ["Refrigeradora", "Televisor", "Computadora", "Lavadora"],
-    default=["Refrigeradora", "Televisor"]
+# --- Cargar datos ---
+@st.cache_data
+def cargar_datos():
+    df = pd.read_csv("data/consumo.csv", sep=";")
+    return df
+
+df = cargar_datos()
+
+# --- barra latreal ---
+st.sidebar.header("Configuración")
+
+dias = sorted(df["dia"].unique())
+dispositivos = sorted(df["dispositivo"].unique())
+
+dia_seleccionado = st.sidebar.selectbox("Selecciona el día", dias)
+dispositivos_seleccionados = st.sidebar.multiselect(
+    "Selecciona los dispositivos:",
+    dispositivos,
+    default=dispositivos[:2]
 )
-horas = st.sidebar.slider("Horas de simulación", 6, 24, 12)
-st.sidebar.write("Haz clic en 'Actualizar' para correr la simulación.")
-if st.sidebar.button("Actualizar simulación"):
-    st.experimental_rerun()
 
 
-# --- Simulación de datos ---
-resultados = {}
-for disp in dispositivos:
-    resultados[disp] = simular_consumo(disp, horas)
+# --- Filtrar datos ---
+datos_filtrados = df[(df["dia"] == dia_seleccionado) & (df["dispositivo"].isin(dispositivos_seleccionados))]
+
+if datos_filtrados.empty:
+    st.warning("No hay datos disponibles para los filtros seleccionados.")
+    st.stop()
+
+
+# --- Cálculo de energía (P = V * I) ---
+datos_filtrados["potencia"] = datos_filtrados["voltaje"] * datos_filtrados["corriente"]
+energia_total = datos_filtrados.groupby("dispositivo")["potencia"].sum() / 1000  # kWh aprox.
 
 
 # --- Panel de métricas ---
-st.subheader("Resumen general de consumo")
-cols = st.columns(len(dispositivos))
-for idx, disp in enumerate(dispositivos):
-    cols[idx].metric(
-        disp,
-        f"{resultados[disp]['energia_total']:.2f} kWh",
-        help=f"Consumo total de {disp}"
-    )
+st.subheader(f"Resumen general - Día {dia_seleccionado}")
+cols = st.columns(len(dispositivos_seleccionados))
+for idx, disp in enumerate(dispositivos_seleccionados):
+    valor = energia_total.get(disp, 0)
+    cols[idx].metric(disp, f"{valor:.2f} kWh", help=f"Consumo total de {disp}")
 
 
 # --- Gráficos ---
 st.subheader("Potencia eléctrica por dispositivo")
-for disp in dispositivos:
-    st.line_chart(resultados[disp]["potencia"], use_container_width=True, height=200)
+
+cols = st.columns(2)
+for idx, disp in enumerate(dispositivos_seleccionados):
+    df_disp = datos_filtrados[datos_filtrados["dispositivo"] == disp]
+    with cols[idx % 2]:
+        st.markdown(f"### 📟 {disp}")
+        st.line_chart(df_disp.set_index("hora")["potencia"], use_container_width=True, height=250)
 
 
-# --- Análisis lógico de alertas ---
+
+# --- Alertas ---
 st.subheader("Alertas detectadas")
-for disp in dispositivos:
-    for v, i in zip(resultados[disp]["voltaje"], resultados[disp]["corriente"]):
-        alertas = verificar_alertas(v, i)
-        for alerta in alertas:
-            st.error(f"{disp}: {alerta}")
+for _, row in datos_filtrados.iterrows():
+    alertas = verificar_alertas(row["voltaje"], row["corriente"])
+    for alerta in alertas:
+        st.error(f"{row['dispositivo']} (hora {int(row['hora'])}): {alerta}")
 
 
 # --- Promedio general ---
-promedio = calcular_promedio([r["energia_total"] for r in resultados.values()])
+promedio = calcular_promedio(list(energia_total.values))
 st.success(f"💡 Consumo promedio general: {promedio:.2f} kWh")
