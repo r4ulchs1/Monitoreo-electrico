@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def simular_consumo(dispositivo, horas=24):
     if dispositivo == "Refrigeradora":
         corriente = np.random.uniform(1.5, 3, horas)
@@ -20,8 +21,20 @@ def simular_consumo(dispositivo, horas=24):
         "voltaje": voltaje,
         "corriente": corriente,
         "potencia": potencia,
-        "energia_total": energia_total
+        "energia_total": energia_total,
     }
+
 
 def calcular_promedio(lista_consumos):
     return np.mean(lista_consumos)
+
+
+def calcular_potencia_df(df):
+    df2 = df.copy()
+    df2["potencia"] = df2["voltaje"] * df2["corriente"]
+    return df2
+
+
+def calc_energia_por_dispositivo(df):
+    grouped = df.groupby("dispositivo")["potencia"].sum()
+    return (grouped / 1000).to_dict()  # kWh

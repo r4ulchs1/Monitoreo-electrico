@@ -17,3 +17,22 @@ def verificar_alertas(voltaje, corriente):
         alertas.append("❗ Relación V/I anómala detectada")
 
     return alertas
+
+
+def evaluar_alertas_batch(df):
+    """
+    Devuelve lista de dicts: [{'id':..., 'dispositivo':..., 'hora':..., 'alertas': [...]}]
+    """
+    resultados = []
+    for _, row in df.iterrows():
+        alerts = verificar_alertas(row["voltaje"], row["corriente"])
+        if alerts:
+            resultados.append(
+                {
+                    "id": row.get("id"),
+                    "dispositivo": row["dispositivo"],
+                    "hora": row["hora"],
+                    "alertas": alerts,
+                }
+            )
+    return resultados

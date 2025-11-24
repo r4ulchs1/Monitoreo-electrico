@@ -1,75 +1,123 @@
-import streamlit as st
+from datetime import datetime
+
 import pandas as pd
-from funcional.funciones import calcular_promedio
+import streamlit as st
+
+# ===============================
+# Importar capas de lógica
+# ===============================
+from db.queries import insertar_consumo, obtener_consumos_por_dia, obtener_dispositivos
+from funcional.funciones import calcular_potencia_df
 from logica.reglas import verificar_alertas
 
-st.set_page_config(page_title="SmartEnergy", page_icon="⚡", layout="wide")
+# ==========================================================
+#                          UI
+# ==========================================================
 
-st.title("⚡Monitoreo de Consumo Eléctrico Doméstico")
+st.set_page_config(page_title="Monitoreo Eléctrico", layout="wide")
 
-# --- Cargar datos ---
-@st.cache_data
-def cargar_datos():
-    df = pd.read_csv("data/consumo.csv", sep=";")
-    return df
-
-df = cargar_datos()
-
-# --- barra latreal ---
-st.sidebar.header("Configuración")
-
-dias = sorted(df["dia"].unique())
-dispositivos = sorted(df["dispositivo"].unique())
-
-dia_seleccionado = st.sidebar.selectbox("Selecciona el día", dias)
-dispositivos_seleccionados = st.sidebar.multiselect(
-    "Selecciona los dispositivos:",
-    dispositivos,
-    default=dispositivos[:2]
-)
+st.title("⚡ Sistema de Monitoreo Eléctrico — Dashboard")
 
 
-# --- Filtrar datos ---
-datos_filtrados = df[(df["dia"] == dia_seleccionado) & (df["dispositivo"].isin(dispositivos_seleccionados))]
+# ==========================================================
+#          SECCIÓN 1: Seleccionar fecha para consultar
+# ==========================================================
 
-if datos_filtrados.empty:
-    st.warning("No hay datos disponibles para los filtros seleccionados.")
-    st.stop()
+st.subheader("📅 Consultar consumos por día")
 
+dia_seleccionado = st.date_input("Selecciona el día:")
+dia_str = dia_seleccionado.strftime("%Y-%m-%d")
 
-# --- Cálculo de energía (P = V * I) ---
-datos_filtrados["potencia"] = datos_filtrados["voltaje"] * datos_filtrados["corriente"]
-energia_total = datos_filtrados.groupby("dispositivo")["potencia"].sum() / 1000  # kWh aprox.
+df = obtener_consumos_por_dia(dia_str)
 
+if df is not None and not df.empty:
+    # Validar columnas obligatorias
+    columnas_obligatorias = ["hora", "voltaje", "corriente"]
+    faltan = [c for c in columnas_obligatorias if c not in df.columns]
 
-# --- Panel de métricas ---
-st.subheader(f"Resumen general - Día {dia_seleccionado}")
-cols = st.columns(len(dispositivos_seleccionados))
-for idx, disp in enumerate(dispositivos_seleccionados):
-    valor = energia_total.get(disp, 0)
-    cols[idx].metric(disp, f"{valor:.2f} kWh", help=f"Consumo total de {disp}")
+    if faltan:
+        st.error(f"Faltan columnas obligatorias en los datos: {faltan}")
+        st.stop()
 
+    st.write("### Resultados")
+    st.dataframe(df)
 
-# --- Gráficos ---
-st.subheader("Potencia eléctrica por dispositivo")
+    st.line_chart(df.set_index("hora")[["voltaje", "corriente"]], height=300)
 
-cols = st.columns(2)
-for idx, disp in enumerate(dispositivos_seleccionados):
-    df_disp = datos_filtrados[datos_filtrados["dispositivo"] == disp]
-    with cols[idx % 2]:
-        st.markdown(f"### 📟 {disp}")
-        st.line_chart(df_disp.set_index("hora")["potencia"], use_container_width=True, height=250)
+else:
+    st.info("No hay datos registrados para este día.")
 
 
+# ==========================================================
+#        SECCIÓN 2: Insertar registro manual
+# ==========================================================
 
-# --- Alertas ---
-st.subheader("Alertas detectadas")
-for _, row in datos_filtrados.iterrows():
-    alertas = verificar_alertas(row["voltaje"], row["corriente"])
-    for alerta in alertas:
-        st.error(f"{row['dispositivo']} (hora {int(row['hora'])}): {alerta}")
+st.subheader("📝 Registrar consumo manual")
+
+dispositivos = obtener_dispositivos()
+
+if not dispositivos:
+    st.warning("No hay dispositivos registrados en la base de datos.")
+    st.stop()  # DETIENE la ejecución del script aquí
+else:
+    mapa_dispositivos = {d["nombre"]: d["id"] for d in dispositivos}
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        dispositivo_nombre = st.selectbox(
+            "Dispositivo:", list(mapa_dispositivos.keys())
+        )
+        voltaje = st.number_input(
+            "Voltaje (V):", min_value=0.0, max_value=500.0, step=0.1
+        )
+        corriente = st.number_input(
+            "Corriente (A):", min_value=0.0, max_value=100.0, step=0.1
+        )
+
+    with col2:
+        dia_manual = st.date_input("Día del registro:")
+        hora_manual = st.time_input("Hora del registro:")
+
+    dispositivo_id = mapa_dispositivos[dispositivo_nombre]
+    dia_insert = dia_manual.strftime("%Y-%m-%d")
+    hora_float = hora_manual.hour + hora_manual.minute / 60
 
 
-# --- Promedio general ---
-promedio = calcular_promedio(list(energia_total.values))
-st.success(f"💡 Consumo promedio general: {promedio:.2f} kWh")
+# ==========================================================
+#        BOTÓN DE INSERTAR
+# ==========================================================
+
+if st.button("➕ Insertar registro"):
+    nuevo = insertar_consumo(
+        dispositivo_id=dispositivo_id,
+        dia=dia_insert,
+        hora=hora_float,
+        voltaje=voltaje,
+        corriente=corriente,
+    )
+
+    if nuevo:
+        # Programación funcional
+        potencia = calcular_potencia_df(voltaje, corriente)
+
+        # Programación lógica
+        reglas = verificar_alertas(voltaje, corriente)
+
+        st.success("Registro insertado correctamente.")
+        st.write("Potencia generada:", potencia, "W")
+
+        if reglas:
+            for r in reglas:
+                st.warning("⚠ " + r)
+
+    else:
+        st.error("Error al insertar el registro.")
+
+
+# ==========================================================
+#        FOOTER
+# ==========================================================
+
+st.markdown("---")
+st.caption("Sistema de Monitoreo Eléctrico — Proyecto académico")
