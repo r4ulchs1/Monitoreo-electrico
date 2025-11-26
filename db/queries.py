@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 
@@ -48,7 +48,7 @@ def insertar_consumo(
         "hora": hora,
         "voltaje": voltaje,
         "corriente": corriente,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
     resp = supabase.table("consumo_electrico").insert(data).execute()
@@ -60,7 +60,7 @@ def insertar_alerta(consumo_id: int, tipo: str, mensaje: str):
         "consumo_id": consumo_id,
         "tipo": tipo,
         "mensaje": mensaje,
-        "fecha": datetime.utcnow().isoformat(),
+        "fecha": datetime.now(timezone.utc).isoformat(),
     }
 
     resp = supabase.table("alertas").insert(data).execute()
