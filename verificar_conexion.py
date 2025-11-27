@@ -1,8 +1,3 @@
-"""
-Script para verificar la conexión con Supabase y el estado de las tablas
-Ejecuta esto ANTES de cargar datos para asegurarte de que todo está configurado correctamente
-"""
-
 import sys
 from datetime import datetime, timezone
 
@@ -10,7 +5,6 @@ from db.supabase_client import get_supabase
 
 
 def verificar_conexion():
-    """Verifica que la conexión a Supabase funciona"""
     print("\n" + "=" * 60)
     print("  VERIFICACIÓN DE CONEXIÓN CON SUPABASE")
     print("=" * 60 + "\n")
@@ -33,13 +27,10 @@ def verificar_tabla(supabase, nombre_tabla: str, columnas_esperadas: list):
     print(f"🔍 Verificando tabla '{nombre_tabla}'...")
 
     try:
-        # Intentar hacer una consulta simple
         resp = supabase.table(nombre_tabla).select("*").limit(1).execute()
 
-        # Si llegamos aquí, la tabla existe
         print(f"   ✅ Tabla '{nombre_tabla}' existe")
 
-        # Verificar si tiene datos
         count_resp = supabase.table(nombre_tabla).select("*", count="exact").execute()
         count = (
             count_resp.count if hasattr(count_resp, "count") else len(count_resp.data)
@@ -54,7 +45,6 @@ def verificar_tabla(supabase, nombre_tabla: str, columnas_esperadas: list):
 
 
 def verificar_estructura():
-    """Verifica la estructura completa de la base de datos"""
     supabase = verificar_conexion()
 
     tablas = {
@@ -97,7 +87,6 @@ def verificar_estructura():
 
 
 def test_insercion():
-    """Prueba insertar un registro de prueba"""
     supabase = verificar_conexion()
 
     print("\n" + "=" * 60)

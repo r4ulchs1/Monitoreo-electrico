@@ -3,25 +3,16 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-# ===============================
-# Importar capas de lógica
-# ===============================
 from db.queries import insertar_consumo, obtener_consumos_por_dia, obtener_dispositivos
 from funcional.funciones import calcular_promedio
 from logica.reglas import verificar_alertas
-
-# ==========================================================
-#                          UI
-# ==========================================================
 
 st.set_page_config(page_title="SmartEnergy Dashboard", page_icon="⚡", layout="wide")
 
 st.title("⚡ SmartEnergy - Monitoreo de Consumo Eléctrico Doméstico")
 
 
-# ==========================================================
 #          SECCIÓN 1: Consultar consumos por día
-# ==========================================================
 
 st.sidebar.header("📊 Configuración de Visualización")
 
@@ -31,8 +22,8 @@ dia_str = dia_seleccionado.strftime("%Y-%m-%d")
 # Obtener datos
 df = obtener_consumos_por_dia(dia_str)
 
+
 if df is not None and not df.empty:
-    # Validar columnas obligatorias
     columnas_obligatorias = ["hora", "voltaje", "corriente"]
     faltan = [c for c in columnas_obligatorias if c not in df.columns]
 
@@ -46,7 +37,6 @@ if df is not None and not df.empty:
     # Selector de dispositivos
     dispositivos_disponibles = []
     if "dispositivo_id" in df.columns:
-        # Obtener nombres de dispositivos
         dispositivos_db = obtener_dispositivos()
         mapa_dispositivos = {d["id"]: d["nombre"] for d in dispositivos_db}
         df["dispositivo"] = df["dispositivo_id"].map(mapa_dispositivos)
@@ -71,7 +61,7 @@ if df is not None and not df.empty:
         df_filtrado = df
         dispositivos_seleccionados = ["Datos generales"]
 
-    # --- Cálculo de energía por dispositivo ---
+    # --- Calculo de energa por dispositivo ---
     if "dispositivo" in df_filtrado.columns:
         energia_total = (
             df_filtrado.groupby("dispositivo")["potencia"].sum() / 1000
@@ -79,9 +69,9 @@ if df is not None and not df.empty:
     else:
         energia_total = {"Total": df_filtrado["potencia"].sum() / 1000}
 
-    # ==========================================================
+    ######################
     #          PANEL DE MÉTRICAS
-    # ==========================================================
+    #################
 
     st.subheader(f"📅 Resumen General - {dia_seleccionado.strftime('%d/%m/%Y')}")
 
@@ -94,9 +84,7 @@ if df is not None and not df.empty:
             help=f"Consumo total de {disp} en el día",
         )
 
-    # ==========================================================
     #          GRÁFICOS DE POTENCIA
-    # ==========================================================
 
     st.subheader("📈 Potencia Eléctrica por Dispositivo")
 
@@ -169,26 +157,6 @@ if df is not None and not df.empty:
     # ==========================================================
     #          ESTADÍSTICAS GENERALES
     # ==========================================================
-
-    st.subheader("📊 Estadísticas del Día")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        promedio_energia = calcular_promedio(list(energia_total.values()))
-        st.metric("💡 Consumo Promedio", f"{promedio_energia:.2f} kWh")
-
-    with col2:
-        total_energia = sum(energia_total.values())
-        st.metric("⚡ Consumo Total", f"{total_energia:.2f} kWh")
-
-    with col3:
-        voltaje_promedio = df_filtrado["voltaje"].mean()
-        st.metric("🔋 Voltaje Promedio", f"{voltaje_promedio:.1f} V")
-
-    with col4:
-        corriente_promedio = df_filtrado["corriente"].mean()
-        st.metric("🔌 Corriente Promedio", f"{corriente_promedio:.2f} A")
 
     # ==========================================================
     #          TABLA DE DATOS DETALLADOS (OPCIONAL)
@@ -288,9 +256,7 @@ if st.button("➕ Insertar Registro", type="primary"):
         st.error("❌ Error al insertar el registro. Verifica la conexión a Supabase.")
 
 
-# ==========================================================
-#        FOOTER
-# ==========================================================
+# footer
 
 st.markdown("---")
 st.caption(

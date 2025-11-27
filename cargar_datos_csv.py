@@ -1,8 +1,3 @@
-"""
-Script para cargar los datos del CSV a Supabase
-Ejecuta este script UNA VEZ para poblar tu base de datos con datos de prueba
-"""
-
 import csv
 from datetime import datetime, timezone
 
@@ -13,10 +8,6 @@ supabase = get_supabase()
 
 
 def obtener_o_crear_dispositivo(nombre: str) -> int:
-    """
-    Busca un dispositivo por nombre. Si no existe, lo crea.
-    Retorna el ID del dispositivo.
-    """
     # Buscar dispositivo existente
     resp = supabase.table("dispositivo").select("*").eq("nombre", nombre).execute()
 
@@ -41,10 +32,6 @@ def obtener_o_crear_dispositivo(nombre: str) -> int:
 
 
 def convertir_dia_a_fecha(dia_texto: str) -> str:
-    """
-    Convierte 'Lunes', 'Martes', etc. a una fecha real
-    Usaremos una semana de referencia: 2025-01-06 (Lunes) a 2025-01-12 (Domingo)
-    """
     dias_map = {
         "Lunes": "2025-01-06",
         "Martes": "2025-01-07",
