@@ -8,14 +8,14 @@ supabase = get_supabase()
 
 
 def obtener_o_crear_dispositivo(nombre: str) -> int:
-    # Buscar dispositivo existente
+    # dispostivio existente
     resp = supabase.table("dispositivo").select("*").eq("nombre", nombre).execute()
 
     if resp.data and len(resp.data) > 0:
         print(f"✓ Dispositivo '{nombre}' ya existe (ID: {resp.data[0]['id']})")
         return resp.data[0]["id"]
 
-    # Crear nuevo dispositivo
+    # crear dispositvo
     nuevo_disp = {
         "nombre": nombre,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -45,15 +45,10 @@ def convertir_dia_a_fecha(dia_texto: str) -> str:
 
 
 def cargar_csv_a_supabase(archivo_csv: str = "data/consumo.csv"):
-    """
-    Lee el archivo CSV y carga los datos a Supabase
-    """
     print(f"\n🔄 Cargando datos desde {archivo_csv}...\n")
 
-    # Mapeo de dispositivos a sus IDs
     dispositivos_ids = {}
 
-    # Leer CSV
     with open(archivo_csv, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file, delimiter=";")
 
@@ -64,7 +59,6 @@ def cargar_csv_a_supabase(archivo_csv: str = "data/consumo.csv"):
             try:
                 dispositivo_nombre = row["dispositivo"]
 
-                # Obtener o crear dispositivo
                 if dispositivo_nombre not in dispositivos_ids:
                     dispositivos_ids[dispositivo_nombre] = obtener_o_crear_dispositivo(
                         dispositivo_nombre
@@ -72,13 +66,11 @@ def cargar_csv_a_supabase(archivo_csv: str = "data/consumo.csv"):
 
                 dispositivo_id = dispositivos_ids[dispositivo_nombre]
 
-                # Convertir día a fecha
                 dia = convertir_dia_a_fecha(row["dia"])
                 hora = float(row["hora"])
                 voltaje = float(row["voltaje"])
                 corriente = float(row["corriente"])
 
-                # Insertar consumo
                 resultado = insertar_consumo(
                     dispositivo_id=dispositivo_id,
                     dia=dia,

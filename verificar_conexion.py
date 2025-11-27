@@ -94,7 +94,7 @@ def test_insercion():
     print("=" * 60 + "\n")
 
     try:
-        # Verificar si existe al menos un dispositivo
+        # Verificar si existe disposiitvo
         resp = supabase.table("dispositivo").select("*").limit(1).execute()
 
         if not resp.data:
@@ -110,7 +110,7 @@ def test_insercion():
             dispositivo_id = resp.data[0]["id"]
             print(f"   ✅ Usando dispositivo existente (ID: {dispositivo_id})")
 
-        # Intentar insertar un consumo de prueba
+        # intentar consumo deprueba
         print("\n🔄 Insertando registro de prueba...")
         test_data = {
             "dispositivo_id": dispositivo_id,
@@ -127,7 +127,7 @@ def test_insercion():
             print("   ✅ Registro de prueba insertado correctamente")
             print(f"   ID del registro: {consumo_resp.data[0]['id']}")
 
-            # Eliminar el registro de prueba
+            # eliminar registro de prueba
             print("\n🧹 Limpiando registro de prueba...")
             supabase.table("consumo_electrico").delete().eq(
                 "id", consumo_resp.data[0]["id"]

@@ -20,9 +20,6 @@ def verificar_alertas(voltaje, corriente):
 
 
 def evaluar_alertas_batch(df):
-    """
-    Devuelve lista de dicts: [{'id':..., 'dispositivo':..., 'hora':..., 'alertas': [...]}]
-    """
     resultados = []
     for _, row in df.iterrows():
         alerts = verificar_alertas(row["voltaje"], row["corriente"])

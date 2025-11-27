@@ -12,14 +12,14 @@ st.set_page_config(page_title="SmartEnergy Dashboard", page_icon="⚡", layout="
 st.title("⚡ SmartEnergy - Monitoreo de Consumo Eléctrico Doméstico")
 
 
-#          SECCIÓN 1: Consultar consumos por día
+#consumos por día
 
 st.sidebar.header("📊 Configuración de Visualización")
 
 dia_seleccionado = st.sidebar.date_input("Selecciona el día:")
 dia_str = dia_seleccionado.strftime("%Y-%m-%d")
 
-# Obtener datos
+# datos
 df = obtener_consumos_por_dia(dia_str)
 
 
@@ -31,10 +31,10 @@ if df is not None and not df.empty:
         st.error(f"Faltan columnas obligatorias en los datos: {faltan}")
         st.stop()
 
-    # Calcular potencia
+    # calcular potencia
     df["potencia"] = df["voltaje"] * df["corriente"]
 
-    # Selector de dispositivos
+    # dispositivos
     dispositivos_disponibles = []
     if "dispositivo_id" in df.columns:
         dispositivos_db = obtener_dispositivos()
@@ -55,13 +55,13 @@ if df is not None and not df.empty:
             st.warning("⚠️ Por favor selecciona al menos un dispositivo.")
             st.stop()
 
-        # Filtrar datos por dispositivos seleccionados
+        # filtra por disp seleccionado
         df_filtrado = df[df["dispositivo"].isin(dispositivos_seleccionados)]
     else:
         df_filtrado = df
         dispositivos_seleccionados = ["Datos generales"]
 
-    # --- Calculo de energa por dispositivo ---
+    # calculo de enrg por dispositivo
     if "dispositivo" in df_filtrado.columns:
         energia_total = (
             df_filtrado.groupby("dispositivo")["potencia"].sum() / 1000
@@ -69,9 +69,7 @@ if df is not None and not df.empty:
     else:
         energia_total = {"Total": df_filtrado["potencia"].sum() / 1000}
 
-    ######################
-    #          PANEL DE MÉTRICAS
-    #################
+#metricas
 
     st.subheader(f"📅 Resumen General - {dia_seleccionado.strftime('%d/%m/%Y')}")
 
@@ -84,11 +82,11 @@ if df is not None and not df.empty:
             help=f"Consumo total de {disp} en el día",
         )
 
-    #          GRÁFICOS DE POTENCIA
+    #graf protencia
 
     st.subheader("📈 Potencia Eléctrica por Dispositivo")
 
-    # Opción 1: Gráficos individuales (como tu versión original)
+    # indiv
     cols_graficos = st.columns(2)
 
     for idx, disp in enumerate(dispositivos_seleccionados):
@@ -98,44 +96,38 @@ if df is not None and not df.empty:
             with cols_graficos[idx % 2]:
                 st.markdown(f"### 📟 {disp}")
 
-                # Gráfico de potencia
+                # potencia
                 st.line_chart(
                     df_disp.set_index("hora")["potencia"],
                     use_container_width=True,
                     height=250,
                 )
-
-                # Estadísticas pequeñas
                 col1, col2, col3 = st.columns(3)
                 col1.metric("Max", f"{df_disp['potencia'].max():.1f} W")
                 col2.metric("Min", f"{df_disp['potencia'].min():.1f} W")
                 col3.metric("Prom", f"{df_disp['potencia'].mean():.1f} W")
 
-    # ==========================================================
-    #          GRÁFICO COMPARATIVO
-    # ==========================================================
+    # Comprarativo
 
     st.subheader("📊 Comparación de Voltaje y Corriente")
 
     tab1, tab2 = st.tabs(["⚡ Voltaje", "🔌 Corriente"])
 
     with tab1:
-        # Preparar datos para el gráfico de voltaje
+        #voltaje
         df_voltaje_pivot = df_filtrado.pivot_table(
             index="hora", columns="dispositivo", values="voltaje"
         )
         st.line_chart(df_voltaje_pivot, use_container_width=True, height=300)
 
     with tab2:
-        # Preparar datos para el gráfico de corriente
+        # intensidad
         df_corriente_pivot = df_filtrado.pivot_table(
             index="hora", columns="dispositivo", values="corriente"
         )
         st.line_chart(df_corriente_pivot, use_container_width=True, height=300)
 
-    # ==========================================================
-    #          ALERTAS DETECTADAS
-    # ==========================================================
+#Aletras
 
     st.subheader("⚠️ Alertas Detectadas")
 
@@ -154,14 +146,6 @@ if df is not None and not df.empty:
     if not alertas_encontradas:
         st.success("✅ No se detectaron alertas para el día seleccionado.")
 
-    # ==========================================================
-    #          ESTADÍSTICAS GENERALES
-    # ==========================================================
-
-    # ==========================================================
-    #          TABLA DE DATOS DETALLADOS (OPCIONAL)
-    # ==========================================================
-
     with st.expander("📋 Ver datos detallados"):
         st.dataframe(
             df_filtrado[
@@ -174,9 +158,7 @@ else:
     st.info("ℹ️ No hay datos registrados para este día.")
 
 
-# ==========================================================
-#        SECCIÓN 2: Insertar registro manual
-# ==========================================================
+# insercion de datos manual
 
 st.markdown("---")
 st.subheader("📝 Registrar Consumo Manual")
@@ -213,15 +195,13 @@ else:
     dia_insert = dia_manual.strftime("%Y-%m-%d")
     hora_float = hora_manual.hour + hora_manual.minute / 60
 
-    # Vista previa de lo que se va a insertar
+    # resumen
     st.info(
         f"📊 Vista previa: {dispositivo_nombre} - {voltaje}V × {corriente}A = {voltaje * corriente:.2f}W"
     )
 
 
-# ==========================================================
-#        BOTÓN DE INSERTAR
-# ==========================================================
+# boton
 
 if st.button("➕ Insertar Registro", type="primary"):
     nuevo = insertar_consumo(
@@ -233,10 +213,10 @@ if st.button("➕ Insertar Registro", type="primary"):
     )
 
     if nuevo:
-        # Calcular potencia correctamente
+        # calcular potencia
         potencia = voltaje * corriente
 
-        # Programación lógica
+        #verificar alertcas (LOGICA)
         reglas = verificar_alertas(voltaje, corriente)
 
         st.success("✅ Registro insertado correctamente.")
@@ -249,7 +229,6 @@ if st.button("➕ Insertar Registro", type="primary"):
         else:
             st.info("✅ No se detectaron alertas para este registro.")
 
-        # Recargar página después de 2 segundos
         st.rerun()
 
     else:

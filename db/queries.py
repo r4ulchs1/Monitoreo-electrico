@@ -6,11 +6,6 @@ from .supabase_client import get_supabase
 
 supabase = get_supabase()
 
-# ======================================
-#     OBTENER DATOS
-# ======================================
-
-
 def obtener_dispositivos():
     resp = supabase.table("dispositivo").select("*").execute()
     return resp.data or []
@@ -32,11 +27,6 @@ def obtener_consumos_por_dia(dia: str):
 def obtener_todos_los_consumos():
     resp = supabase.table("consumo_electrico").select("*").execute()
     return pd.DataFrame(resp.data or [])
-
-
-# ======================================
-#        INSERTAR DATOS
-# ======================================
 
 
 def insertar_consumo(
@@ -65,11 +55,6 @@ def insertar_alerta(consumo_id: int, tipo: str, mensaje: str):
 
     resp = supabase.table("alertas").insert(data).execute()
     return resp.data
-
-
-# ======================================
-#    UTILIDADES
-# ======================================
 
 
 def obtener_consumos_formateados_por_dia(dia: str):
